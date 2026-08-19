@@ -665,10 +665,12 @@ async function showDetail(l, keepTab){
     <div id="dTrans" class="transcript" style="margin-top:10px;display:none">${transHtml}</div>
     <div class="detail-actions">
       <button class="btn primary" id="btnEntregar">📤 Enviar a la UTE (Salesforce)</button>
+      <button class="btn" id="btnEditar">✏️ Editar datos</button>
       <button class="btn" onclick="window.open('https://wa.me/${(l.telefono||'').replace(/[^0-9]/g,'')}','_blank')">Enviar WhatsApp</button>
     </div>
     <div id="entregaMsg" style="margin-top:10px;font-size:12.5px;font-weight:700;min-height:16px"></div>`;
   document.getElementById('btnEntregar').onclick = () => entregarUte(l);
+  document.getElementById('btnEditar').onclick = () => editarLead(l);
   if (!keepTab) detail.scrollIntoView({behavior:'smooth',block:'start'});
   if (l.conversacion_id) {
     const { data: msgs } = await sb.from('ute_mensajes')
@@ -681,6 +683,29 @@ async function showDetail(l, keepTab){
     const div = document.getElementById('dTrans');
     if (div) div.innerHTML = '<div class="loading-note">Sin conversación asociada.</div>';
   }
+}
+async function editarLead(l){
+  const campos = [['nombre','Nombre'],['telefono','Teléfono'],['email','Correo'],['carrera','Carrera'],['ciudad','Ciudad'],['mejor_horario','Mejor horario']];
+  detail.innerHTML = `
+    <div style="font-size:16px;font-weight:800;margin-bottom:12px">✏️ Editar datos</div>
+    <div class="dgrid">
+      ${campos.map(([k,lab])=>`<div class="dsec"><div class="k">${lab}</div><input id="ed_${k}" value="${String(l[k]||'').replace(/"/g,'&quot;')}" style="width:100%;font-family:inherit;font-weight:700;font-size:13.5px;border:1.5px solid var(--line);border-radius:8px;padding:8px 10px;background:#fff;color:var(--ink)"></div>`).join('')}
+    </div>
+    <div class="detail-actions">
+      <button class="btn primary" id="edGuardar">Guardar cambios</button>
+      <button class="btn" id="edCancelar">Cancelar</button>
+    </div>
+    <div id="edMsg" style="margin-top:10px;font-size:12.5px;font-weight:700;min-height:16px"></div>`;
+  document.getElementById('edCancelar').onclick = () => showDetail(l, true);
+  document.getElementById('edGuardar').onclick = async () => {
+    const upd = {};
+    for (const [k] of campos) upd[k] = document.getElementById('ed_'+k).value.trim() || null;
+    const { error } = await sb.from('ute_leads').update(upd).eq('id', l.id);
+    const msg = document.getElementById('edMsg');
+    if (error) { msg.style.color = 'var(--hot)'; msg.textContent = '✗ ' + error.message; return; }
+    Object.assign(l, upd);
+    renderQueue(); updateSummary(); showDetail(l, true);
+  };
 }
 function dTab(btn,id){
   btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on'));
