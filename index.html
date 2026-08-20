@@ -454,7 +454,7 @@ Chart.defaults.font.family = "'Manrope', sans-serif";
 Chart.defaults.font.weight = 600;
 Chart.defaults.color = P.muted;
 
-let ROL = null, USER = null;
+let ROL = null, USER = null, READONLY = false;
 let leads = [];            // filas reales de ute_leads
 let selected = null;
 const charts = {};
@@ -482,6 +482,7 @@ async function iniciar(session){
   USER = session.user;
   ROL = USER.app_metadata?.rol || null;
   if (!ROL) { loginErr.textContent = 'Tu usuario no tiene rol asignado'; return; }
+  READONLY = (ROL !== 'agente');   // 'ute' y 'cliente_ute' = solo lectura
   loginWrap.style.display = 'none';
   userChip.style.display = 'flex';
   userEmail.textContent = USER.email + ' · ' + (ROL === 'agente' ? 'Equipo' : 'UTE');
@@ -589,16 +590,16 @@ function renderQueue(){
       const resUI = RESULTS_UI[l.resultado||null];
       row.innerHTML = `
         ${pnBadge(l)}
-        <div class="checkwrap"><button class="checkbtn ${l.conectado?'on':''}">${l.conectado?'✓':''}</button><small>${l.conectado?(l.conectado_por||'sí').split('@')[0]:'conectar'}</small></div>
+        <div class="checkwrap"><button class="checkbtn ${l.conectado?'on':''}" ${READONLY?'disabled style="cursor:default;opacity:.6"':''}>${l.conectado?'✓':''}</button><small>${l.conectado?(l.conectado_por||'sí').split('@')[0]:(READONLY?'—':'conectar')}</small></div>
         <div class="who">
           <div class="nm">${l.nombre||'(sin nombre)'}</div>
           <div class="cr">${l.carrera||'—'} · ${l.ciudad||'—'}</div>
           <div class="ct"><span>📞</span>${l.telefono||'—'}<span>✉</span>${l.email||'—'}</div>
         </div>
-        <select class="res-select ${l.resultado?'r-set':''}">${RESULTS.map(r=>`<option ${r===resUI?'selected':''}>${r}</option>`).join('')}</select>
+        <select class="res-select ${l.resultado?'r-set':''}" ${READONLY?'disabled':''}>${RESULTS.map(r=>`<option ${r===resUI?'selected':''}>${r}</option>`).join('')}</select>
         <span class="assigned-tag ${l.conectado?'':'no'}">${l.conectado?('Consultor: '+(l.conectado_por||'').split('@')[0]):'Sin asignar'}</span>
         ${l.resumen_ia ? `<div class="snip">"${(l.resumen_ia.split('.')[0]||'').slice(0,160)}."</div>` : ''}`;
-      row.querySelector('.checkbtn').onclick = async ev => {
+      if(!READONLY) row.querySelector('.checkbtn').onclick = async ev => {
         ev.stopPropagation();
         const nuevo = !l.conectado;
         await sb.from('ute_leads').update({
@@ -612,7 +613,7 @@ function renderQueue(){
       };
       const sel = row.querySelector('.res-select');
       sel.onclick = ev => ev.stopPropagation();
-      sel.onchange = async ev => {
+      if(!READONLY) sel.onchange = async ev => {
         const val = RESULTS_DB[ev.target.value];
         await sb.from('ute_leads').update({ resultado: val, resultado_fuente: val ? 'interno' : null }).eq('id', l.id);
         l.resultado = val;
@@ -664,13 +665,15 @@ async function showDetail(l, keepTab){
     </div>
     <div id="dTrans" class="transcript" style="margin-top:10px;display:none">${transHtml}</div>
     <div class="detail-actions">
-      <button class="btn primary" id="btnEntregar">📤 Enviar a la UTE (Salesforce)</button>
-      <button class="btn" id="btnEditar">✏️ Editar datos</button>
+      ${READONLY?'':`<button class="btn primary" id="btnEntregar">📤 Enviar a la UTE (Salesforce)</button>
+      <button class="btn" id="btnEditar">✏️ Editar datos</button>`}
       <button class="btn" onclick="window.open('https://wa.me/${(l.telefono||'').replace(/[^0-9]/g,'')}','_blank')">Enviar WhatsApp</button>
     </div>
     <div id="entregaMsg" style="margin-top:10px;font-size:12.5px;font-weight:700;min-height:16px"></div>`;
-  document.getElementById('btnEntregar').onclick = () => entregarUte(l);
-  document.getElementById('btnEditar').onclick = () => editarLead(l);
+  if(!READONLY){
+    document.getElementById('btnEntregar').onclick = () => entregarUte(l);
+    document.getElementById('btnEditar').onclick = () => editarLead(l);
+  }
   if (!keepTab) detail.scrollIntoView({behavior:'smooth',block:'start'});
   if (l.conversacion_id) {
     const { data: msgs } = await sb.from('ute_mensajes')
