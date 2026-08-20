@@ -596,7 +596,7 @@ function renderQueue(){
           <div class="ct"><span>📞</span>${l.telefono||'—'}<span>✉</span>${l.email||'—'}</div>
         </div>
         <select class="res-select ${l.resultado?'r-set':''}">${RESULTS.map(r=>`<option ${r===resUI?'selected':''}>${r}</option>`).join('')}</select>
-        <span class="assigned-tag ${l.conectado?'':'no'}">${l.conectado?'En gestión':'Sin tomar'}</span>
+        <span class="assigned-tag ${l.conectado?'':'no'}">${l.conectado?('Consultor: '+(l.conectado_por||'').split('@')[0]):'Sin asignar'}</span>
         ${l.resumen_ia ? `<div class="snip">"${(l.resumen_ia.split('.')[0]||'').slice(0,160)}."</div>` : ''}`;
       row.querySelector('.checkbtn').onclick = async ev => {
         ev.stopPropagation();
@@ -650,7 +650,7 @@ async function showDetail(l, keepTab){
       <div class="dsec"><div class="k">Teléfono</div><div class="v">${l.telefono||'—'}</div></div>
       <div class="dsec"><div class="k">Correo</div><div class="v">${l.email||'—'}</div></div>
       <div class="dsec"><div class="k">Mejor horario</div><div class="v">${l.mejor_horario||'—'}</div></div>
-      <div class="dsec"><div class="k">Conectado</div><div class="v" style="color:${l.conectado?'var(--ok)':'var(--hot)'}">${l.conectado ? '✓ '+(l.conectado_por||'Sí') : 'Sin tomar'}</div></div>
+      <div class="dsec"><div class="k">Consultor in house</div><div class="v" style="color:${l.conectado?'var(--ok)':'var(--hot)'}">${l.conectado ? '✓ '+(l.conectado_por||'Asignado').split('@')[0] : 'Sin asignar'}</div></div>
       <div class="dsec"><div class="k">Resultado</div><div class="v">${resUI}</div></div>
       <div class="dsec"><div class="k">Entregado a la UTE</div><div class="v" style="color:${l.entregado_ute?'var(--ok)':'var(--warn)'}">${l.entregado_ute ? '✓ '+(l.sf_accion||'enviado') : 'Pendiente'}</div></div>
     </div>
