@@ -214,7 +214,7 @@ footer{text-align:center;font-size:12px;color:var(--muted);font-weight:600;paddi
   </div>
   <div class="tabs">
     <button class="tab active" id="tabUte" onclick="switchTab('ute')">Dashboard UTE</button>
-    <button class="tab" id="tabInt" onclick="switchTab('int')">Gestión interna</button>
+    <button class="tab" id="tabInt" onclick="switchTab('int')">Agentes</button>
     <button class="tab" id="tabUsuarios" onclick="switchTab('usuarios')" style="display:none">Usuarios</button>
   </div>
   <div class="userchip" id="userChip" style="display:none"><span id="userEmail"></span><button onclick="salir()">Salir</button></div>
@@ -374,11 +374,11 @@ footer{text-align:center;font-size:12px;color:var(--muted);font-weight:600;paddi
 
 <!-- ============ DASHBOARD 2: GESTIÓN INTERNA ============ -->
 <div class="wrap hidden" id="viewInt">
-  <div class="section-note">🔒 Vista interna del equipo · No visible para la UTE · Check = ya conectamos con el lead · El desplegable de resultado se llena con el reporte diario de Carlos</div>
+  <div class="section-note">🔒 Panel de Agentes (Publistrategy) · No visible para la UTE · Check = ya conectamos con el lead · El desplegable de resultado se llena con el reporte diario de Carlos</div>
 
   <div class="pagehead">
     <div>
-      <h2>Cola de gestión · Prioridades</h2>
+      <h2>Panel de Agentes · Prioridades</h2>
       <p class="sub">La prioridad llega calculada desde el agente · primero lo prioritario</p>
     </div>
   </div>
@@ -455,7 +455,7 @@ footer{text-align:center;font-size:12px;color:var(--muted);font-weight:600;paddi
     <div class="urow">
       <input id="nuEmail" placeholder="correo@ejemplo.com" type="email" autocomplete="off">
       <input id="nuPass" placeholder="Contraseña (mín. 8)" type="text" autocomplete="off">
-      <select id="nuRol"><option value="agente">Agente · solo Gestión interna</option><option value="cliente_ute">Vista UTE · solo Dashboard</option><option value="admin">Administrador · todo</option></select>
+      <select id="nuRol"><option value="agente">Publistrategy · Agentes (solo panel de Agentes)</option><option value="cliente_ute">UTE · solo Dashboard</option><option value="admin">Administrador · todo</option></select>
       <button class="btn primary" onclick="crearUsuario()">Crear</button>
     </div>
     <div id="nuMsg" style="margin-top:10px;font-size:13px;font-weight:600;min-height:16px"></div>
@@ -800,9 +800,9 @@ async function llamarUsuarios(body){
   return res.json();
 }
 function nivelLabel(n){
-  return n==='admin'?'Administrador · todo'
-       : n==='agente'?'Agente · Gestión interna'
-       : n==='cliente_ute'?'Vista UTE · Dashboard'
+  return n==='admin'?'Administrador · Todo'
+       : n==='agente'?'Publistrategy · Agentes'
+       : n==='cliente_ute'?'UTE · Dashboard'
        : n==='ute'?'UTE · lectura interna'
        : n;
 }
