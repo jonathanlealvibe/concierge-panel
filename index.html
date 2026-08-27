@@ -507,19 +507,31 @@ async function iniciar(session){
   ROL = USER.app_metadata?.rol || null;
   if (!ROL) { loginErr.textContent = 'Tu usuario no tiene rol asignado'; return; }
   READONLY = (ROL !== 'agente');   // 'ute' y 'cliente_ute' = solo lectura
-  if (USER.app_metadata?.es_admin) document.getElementById('tabUsuarios').style.display = '';
+  const ES_ADMIN = !!USER.app_metadata?.es_admin;
   loginWrap.style.display = 'none';
   userChip.style.display = 'flex';
-  userEmail.textContent = USER.email + ' · ' + (ROL === 'agente' ? 'Equipo' : 'UTE');
-  if (ROL === 'cliente_ute') {
+  userEmail.textContent = USER.email + ' · ' + (ES_ADMIN ? 'Admin' : (ROL === 'agente' ? 'Agente' : 'UTE'));
+
+  if (ES_ADMIN) {
+    // Admin: acceso a TODO (Gestión interna, Dashboard UTE, Usuarios)
+    document.getElementById('tabUsuarios').style.display = '';
+    tabUte.style.display = '';
+    switchTab('int');
+    await cargarInterna(); suscribirRealtime(); await cargarUte();
+  } else if (ROL === 'agente') {
+    // Agente (usuario): SOLO Gestión interna — sin Dashboard UTE ni Usuarios
+    tabUte.style.display = 'none';
+    document.getElementById('tabUsuarios').style.display = 'none';
+    switchTab('int');
+    await cargarInterna(); suscribirRealtime();
+  } else if (ROL === 'cliente_ute') {
     tabInt.style.display = 'none';
     switchTab('ute');
     await cargarUte();
   } else {
+    // 'ute' (solo lectura): vista interna + dashboard
     switchTab('int');
-    await cargarInterna();
-    suscribirRealtime();
-    await cargarUte();
+    await cargarInterna(); suscribirRealtime(); await cargarUte();
   }
 }
 
@@ -599,6 +611,11 @@ function updateSummary(){
   buildEstados();
 }
 
+function fmtFecha(iso){
+  if(!iso) return '—';
+  try{ return new Date(iso).toLocaleString('es-EC',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}); }
+  catch(e){ return '—'; }
+}
 function renderQueue(){
   const query = q.value.toLowerCase();
   const fp = fPri.value, fc = fCar.value, fci = fCity.value, ft = fTake.value;
@@ -623,6 +640,7 @@ function renderQueue(){
           <div class="nm">${l.nombre||'(sin nombre)'}</div>
           <div class="cr">${l.carrera||'—'} · ${l.ciudad||'—'}</div>
           <div class="ct"><span>📞</span>${l.telefono||'—'}<span>✉</span>${l.email||'—'}</div>
+          <div class="ct" style="color:var(--muted)"><span>🕒</span>${fmtFecha(l.created_at)}${(l.contactos||1)>1?` &nbsp;<b style="color:#B8912B">🔁 volvió a contactar · ${l.contactos}×</b>`:''}</div>
         </div>
         <select class="res-select ${l.resultado?'r-set':''}" ${READONLY?'disabled':''}>${RESULTS.map(r=>`<option ${r===resUI?'selected':''}>${r}</option>`).join('')}</select>
         <span class="assigned-tag ${l.conectado?'':'no'}">${l.conectado?('Consultor: '+(l.conectado_por||'').split('@')[0]):'Sin asignar'}</span>
@@ -679,6 +697,8 @@ async function showDetail(l, keepTab){
       <div class="dsec"><div class="k">Teléfono</div><div class="v">${l.telefono||'—'}</div></div>
       <div class="dsec"><div class="k">Correo</div><div class="v">${l.email||'—'}</div></div>
       <div class="dsec"><div class="k">Mejor horario</div><div class="v">${l.mejor_horario||'—'}</div></div>
+      <div class="dsec"><div class="k">Llegó (fecha y hora)</div><div class="v">🕒 ${fmtFecha(l.created_at)}</div></div>
+      <div class="dsec"><div class="k">Veces que contactó</div><div class="v" style="${(l.contactos||1)>1?'color:#B8912B;font-weight:800':''}">${(l.contactos||1)>1?`🔁 ${l.contactos} veces · última: ${fmtFecha(l.ultimo_contacto)}`:'1 vez'}</div></div>
       <div class="dsec"><div class="k">Consultor in house</div><div class="v" style="color:${l.conectado?'var(--ok)':'var(--hot)'}">${l.conectado ? '✓ '+(l.conectado_por||'Asignado').split('@')[0] : 'Sin asignar'}</div></div>
       <div class="dsec"><div class="k">Resultado</div><div class="v">${resUI}</div></div>
       <div class="dsec"><div class="k">Entregado a la UTE</div><div class="v" style="color:${l.entregado_ute?'var(--ok)':'var(--warn)'}">${l.entregado_ute ? '✓ '+(l.sf_accion||'enviado') : 'Pendiente'}</div></div>
