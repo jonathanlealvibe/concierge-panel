@@ -455,7 +455,7 @@ footer{text-align:center;font-size:12px;color:var(--muted);font-weight:600;paddi
     <div class="urow">
       <input id="nuEmail" placeholder="correo@ejemplo.com" type="email" autocomplete="off">
       <input id="nuPass" placeholder="Contraseña (mín. 8)" type="text" autocomplete="off">
-      <select id="nuRol"><option value="agente">Agente · gestión interna</option><option value="ute">Vista UTE · solo lectura</option></select>
+      <select id="nuRol"><option value="agente">Agente · solo Gestión interna</option><option value="cliente_ute">Vista UTE · solo Dashboard</option><option value="admin">Administrador · todo</option></select>
       <button class="btn primary" onclick="crearUsuario()">Crear</button>
     </div>
     <div id="nuMsg" style="margin-top:10px;font-size:13px;font-weight:600;min-height:16px"></div>
@@ -799,32 +799,52 @@ async function llamarUsuarios(body){
   });
   return res.json();
 }
-function rolLabel(r){ return r==='agente'?'Agente':(r==='ute'?'Vista UTE':(r==='admin'?'Administrador':r)); }
+function nivelLabel(n){
+  return n==='admin'?'Administrador · todo'
+       : n==='agente'?'Agente · Gestión interna'
+       : n==='cliente_ute'?'Vista UTE · Dashboard'
+       : n==='ute'?'UTE · lectura interna'
+       : n;
+}
 async function cargarUsuarios(){
   const cont = document.getElementById('usuariosBody');
   cont.innerHTML = '<p style="padding:16px;color:var(--muted);font-weight:600">Cargando usuarios…</p>';
   let out; try { out = await llamarUsuarios({ accion:'listar' }); }
   catch(e){ cont.innerHTML = '<p style="padding:16px;color:var(--hot)">Error de red: '+e.message+'</p>'; return; }
   if(!out.ok){ cont.innerHTML = '<p style="padding:16px;color:var(--hot)">'+(out.error||'Error')+'</p>'; return; }
-  cont.innerHTML = out.usuarios.map(u=>`
-    <div class="urow-item">
-      <div>
+  const niveles = ['agente','cliente_ute','admin'];
+  cont.innerHTML = out.usuarios.map(u=>{
+    const me = u.id === USER.id;
+    const dd = `<select onchange="cambiarNivel('${u.id}', this.value)" title="Nivel de acceso" style="font-family:inherit;font-size:12.5px;padding:7px 9px;border:1.5px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)">
+        ${niveles.map(n=>`<option value="${n}" ${u.nivel===n?'selected':''}>${nivelLabel(n)}</option>`).join('')}
+        ${u.nivel==='ute'?`<option value="ute" selected>UTE · lectura interna</option>`:''}
+      </select>`;
+    return `<div class="urow-item">
+      <div style="flex:1;min-width:180px">
         <div class="ue">${u.email||'(sin correo)'}${u.es_admin?'<span class="uadm">ADMIN</span>':''}</div>
-        <div class="us">${rolLabel(u.rol)} · último acceso: ${u.ultimo_acceso? new Date(u.ultimo_acceso).toLocaleString('es-EC'):'nunca'}</div>
+        <div class="us">${nivelLabel(u.nivel)} · último acceso: ${u.ultimo_acceso? new Date(u.ultimo_acceso).toLocaleString('es-EC'):'nunca'}</div>
       </div>
-      ${u.es_admin?'<span class="us">—</span>':`<button class="btn" onclick="eliminarUsuario('${u.id}','${(u.email||'').replace(/'/g,"")}')">Eliminar</button>`}
-    </div>`).join('') || '<p style="padding:16px;color:var(--muted)">Sin usuarios.</p>';
+      ${me ? '<span class="us" style="font-weight:800;color:#B8912B">Tú</span>' : dd}
+      ${(me||u.es_admin) ? '' : `<button class="btn" onclick="eliminarUsuario('${u.id}','${(u.email||'').replace(/'/g,"")}')">Eliminar</button>`}
+    </div>`;
+  }).join('') || '<p style="padding:16px;color:var(--muted)">Sin usuarios.</p>';
+}
+async function cambiarNivel(id, nivel){
+  let out; try { out = await llamarUsuarios({accion:'cambiar_nivel', user_id:id, nivel}); }
+  catch(e){ alert('Error de red'); cargarUsuarios(); return; }
+  if(!out.ok) alert(out.error||'No se pudo cambiar el nivel');
+  cargarUsuarios();
 }
 async function crearUsuario(){
   const email=document.getElementById('nuEmail').value.trim();
   const password=document.getElementById('nuPass').value;
-  const rol=document.getElementById('nuRol').value;
+  const nivel=document.getElementById('nuRol').value;
   const msg=document.getElementById('nuMsg');
   if(!email||!password){ msg.style.color='var(--hot)'; msg.textContent='✗ Completa correo y contraseña'; return; }
   msg.style.color='var(--muted)'; msg.textContent='Creando…';
-  let out; try { out=await llamarUsuarios({accion:'crear', email, password, rol}); }
+  let out; try { out=await llamarUsuarios({accion:'crear', email, password, nivel}); }
   catch(e){ msg.style.color='var(--hot)'; msg.textContent='✗ Error de red'; return; }
-  if(out.ok){ msg.style.color='var(--ok)'; msg.textContent='✓ Usuario creado ('+rolLabel(out.rol)+')';
+  if(out.ok){ msg.style.color='var(--ok)'; msg.textContent='✓ Usuario creado ('+nivelLabel(out.nivel)+')';
     document.getElementById('nuEmail').value=''; document.getElementById('nuPass').value=''; cargarUsuarios(); }
   else { msg.style.color='var(--hot)'; msg.textContent='✗ '+(out.error||'No se pudo crear'); }
 }
