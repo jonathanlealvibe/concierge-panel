@@ -678,7 +678,7 @@ function renderQueue(){
           <div class="nm">${l.nombre||'(sin nombre)'}</div>
           <div class="cr">${l.carrera||'—'} · ${l.ciudad||'—'}</div>
           <div class="ct"><span>📞</span>${l.telefono||'—'}<span>✉</span>${l.email||'—'}</div>
-          <div class="ct" style="color:var(--muted)"><span>🕒</span>${fmtFecha(l.created_at)}${(l.contactos||1)>1?` &nbsp;<b style="color:#B8912B">🔁 volvió a contactar · ${l.contactos}×</b>`:''}</div>
+          <div class="ct" style="color:var(--muted)"><span>🕒</span>${fmtFecha(l.created_at)}${(l.contactos||1)>1?` &nbsp;<b style="color:#B8912B">🔁 volvió a contactar · ${l.contactos}×</b>`:''}${l.entregado_ute?` &nbsp;<b style="color:var(--ok)">✓ en UTE</b>`:''}${l.atendido?` &nbsp;<b style="color:var(--ok)">✓ atendido</b>`:''}</div>
         </div>
         <select class="res-select ${l.resultado?'r-set':''}" ${READONLY?'disabled':''}>${RESULTS.map(r=>`<option ${r===resUI?'selected':''}>${r}</option>`).join('')}</select>
         <span class="assigned-tag ${l.conectado?'':'no'}">${l.conectado?('Consultor: '+(l.conectado_por||'').split('@')[0]):'Sin asignar'}</span>
@@ -739,7 +739,8 @@ async function showDetail(l, keepTab){
       <div class="dsec"><div class="k">Veces que contactó</div><div class="v" style="${(l.contactos||1)>1?'color:#B8912B;font-weight:800':''}">${(l.contactos||1)>1?`🔁 ${l.contactos} veces · última: ${fmtFecha(l.ultimo_contacto)}`:'1 vez'}</div></div>
       <div class="dsec"><div class="k">Consultor in house</div><div class="v" style="color:${l.conectado?'var(--ok)':'var(--hot)'}">${l.conectado ? '✓ '+(l.conectado_por||'Asignado').split('@')[0] : 'Sin asignar'}</div></div>
       <div class="dsec"><div class="k">Resultado</div><div class="v">${resUI}</div></div>
-      <div class="dsec"><div class="k">Entregado a la UTE</div><div class="v" style="color:${l.entregado_ute?'var(--ok)':'var(--warn)'}">${l.entregado_ute ? '✓ '+(l.sf_accion||'enviado') : 'Pendiente'}</div></div>
+      <div class="dsec"><div class="k">Entregado a la UTE (automático)</div><div class="v" style="color:${l.entregado_ute?'var(--ok)':'var(--warn)'}">${l.entregado_ute ? '✓ Salesforce · '+(l.sf_accion||'enviado') : (l.entrega_error ? '⚠ '+l.entrega_error : 'En cola / pendiente de datos')}</div></div>
+      <div class="dsec"><div class="k">Atendido por el equipo</div><div class="v" style="color:${l.atendido?'var(--ok)':'var(--muted)'}">${l.atendido ? '✓ '+((l.atendido_por||'equipo').split('@')[0])+' · '+fmtFecha(l.atendido_en) : 'Sin atender'}</div></div>
     </div>
     <div class="dtabs">
       <button class="on" onclick="dTab(this,'dResumen')">Resumen</button>
@@ -751,13 +752,13 @@ async function showDetail(l, keepTab){
     </div>
     <div id="dTrans" class="transcript" style="margin-top:10px;display:none">${transHtml}</div>
     <div class="detail-actions">
-      ${READONLY?'':`<button class="btn primary" id="btnEntregar">📤 Enviar a la UTE (Salesforce)</button>
+      ${READONLY?'':`<button class="btn ${l.atendido?'':'primary'}" id="btnAtendido">${l.atendido?'↩︎ Quitar “atendido”':'✓ Marcar como atendido'}</button>
       <button class="btn" id="btnEditar">✏️ Editar datos</button>`}
       <button class="btn" onclick="window.open('https://wa.me/${(l.telefono||'').replace(/[^0-9]/g,'')}','_blank')">Enviar WhatsApp</button>
     </div>
     <div id="entregaMsg" style="margin-top:10px;font-size:12.5px;font-weight:700;min-height:16px"></div>`;
   if(!READONLY){
-    document.getElementById('btnEntregar').onclick = () => entregarUte(l);
+    document.getElementById('btnAtendido').onclick = () => toggleAtendido(l);
     document.getElementById('btnEditar').onclick = () => editarLead(l);
   }
   if (!keepTab) detail.scrollIntoView({behavior:'smooth',block:'start'});
@@ -803,27 +804,25 @@ function dTab(btn,id){
   dTrans.style.display = id==='dTrans' ? 'flex' : 'none';
 }
 
-async function entregarUte(l){
+// La entrega a Salesforce ahora es AUTOMÁTICA (se dispara sola al completarse el lead).
+// Este botón marca que el equipo ya atendió/gestionó al prospecto — con quién y cuándo.
+async function toggleAtendido(l){
   const msg = document.getElementById('entregaMsg');
-  msg.style.color = 'var(--muted)'; msg.textContent = 'Enviando a Salesforce UTE…';
+  const nuevo = !l.atendido;
+  msg.style.color = 'var(--muted)';
+  msg.textContent = nuevo ? 'Marcando como atendido…' : 'Quitando la marca…';
+  const upd = nuevo
+    ? { atendido:true, atendido_por:(USER?.email||'equipo'), atendido_en:new Date().toISOString() }
+    : { atendido:false, atendido_por:null, atendido_en:null };
   try {
-    const { data: { session } } = await sb.auth.getSession();
-    const res = await fetch(`${SB_URL}/functions/v1/entrega-ute`, {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${session.access_token}`, 'apikey': SB_KEY },
-      body: JSON.stringify({ lead_id: l.id })
-    });
-    const out = await res.json();
-    if (out.ok) {
-      msg.style.color = 'var(--ok)';
-      msg.textContent = `✓ Entregado — ${out.accion||'ok'}${out.salesforceId ? ' · SF: '+out.salesforceId : ''}`;
-      l.entregado_ute = true; l.sf_accion = out.accion; showDetail(l, true);
-    } else {
-      msg.style.color = 'var(--hot)';
-      msg.textContent = '✗ ' + (out.error || 'No se pudo entregar');
-    }
+    const { error } = await sb.from('ute_leads').update(upd).eq('id', l.id);
+    if (error) { msg.style.color = 'var(--hot)'; msg.textContent = '✗ ' + error.message; return; }
+    Object.assign(l, upd);
+    msg.style.color = 'var(--ok)';
+    msg.textContent = nuevo ? '✓ Marcado como atendido' : 'Marca de atendido retirada';
+    renderQueue(); showDetail(l, true);
   } catch(e) {
-    msg.style.color = 'var(--hot)'; msg.textContent = '✗ Error de red: ' + e.message;
+    msg.style.color = 'var(--hot)'; msg.textContent = '✗ Error: ' + e.message;
   }
 }
 
