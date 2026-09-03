@@ -203,6 +203,7 @@ footer{text-align:center;font-size:12px;color:var(--muted);font-weight:600;paddi
 }
 .folio{display:inline-block;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;font-weight:700;letter-spacing:.04em;color:#B8912B;background:#F6EFDB;border:1px solid #E5D3A6;border-radius:6px;padding:1px 6px;margin-right:8px;vertical-align:middle}
 .folio.big{font-size:12.5px;padding:2px 8px}
+.call-sep{align-self:center;font-size:11px;font-weight:800;letter-spacing:.04em;color:#B8912B;background:#F6EFDB;border:1px solid #E5D3A6;border-radius:999px;padding:3px 10px;margin:8px auto 4px}
 </style>
 </head>
 <body>
@@ -768,10 +769,10 @@ async function showDetail(l, keepTab){
   if (!keepTab) detail.scrollIntoView({behavior:'smooth',block:'start'});
   if (l.conversacion_id) {
     const { data: msgs } = await sb.from('ute_mensajes')
-      .select('seq,rol,texto').eq('conversacion_id', l.conversacion_id).order('seq');
+      .select('seq,rol,texto,llamada,llamada_fecha').eq('conversacion_id', l.conversacion_id).order('seq');
     const div = document.getElementById('dTrans');
     if (div) div.innerHTML = (msgs?.length)
-      ? msgs.map(m=>`<div class="msg ${m.rol==='agente'?'ai':'us'}">${m.texto}</div>`).join('')
+      ? (()=>{let cur=null,out='';const nLl=new Set(msgs.map(m=>m.llamada).filter(Boolean)).size;for(const m of msgs){if(m.llamada&&m.llamada!==cur){cur=m.llamada;if(nLl>1||m.llamada_fecha)out+=`<div class="call-sep">📞 Llamada ${m.llamada}${m.llamada_fecha?' · '+fmtFecha(m.llamada_fecha):''}</div>`;}out+=`<div class="msg ${m.rol==='agente'?'ai':'us'}">${m.texto}</div>`;}return out;})()
       : '<div class="loading-note">Sin transcripción para esta conversación.</div>';
   } else {
     const div = document.getElementById('dTrans');
