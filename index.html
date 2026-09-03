@@ -201,6 +201,8 @@ footer{text-align:center;font-size:12px;color:var(--muted);font-weight:600;paddi
   .lead, .card, .kpi, .dsec, canvas, .chartcard, .panel { break-inside:avoid; page-break-inside:avoid }
   .snip{ color:#33406A !important }
 }
+.folio{display:inline-block;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;font-weight:700;letter-spacing:.04em;color:#B8912B;background:#F6EFDB;border:1px solid #E5D3A6;border-radius:6px;padding:1px 6px;margin-right:8px;vertical-align:middle}
+.folio.big{font-size:12.5px;padding:2px 8px}
 </style>
 </head>
 <body>
@@ -434,7 +436,7 @@ footer{text-align:center;font-size:12px;color:var(--muted);font-weight:600;paddi
   </div>
 
   <div class="controls">
-    <input type="search" id="q" placeholder="Buscar por nombre…">
+    <input type="search" id="q" placeholder="Buscar por nombre o N° (CX-000123)…">
     <select id="fPri">
       <option value="all">Todas las prioridades</option>
       <option value="5">P5 · Listo para matricularse</option>
@@ -649,6 +651,7 @@ function updateSummary(){
   buildEstados();
 }
 
+function fmtFolio(l){ return l && l.folio!=null ? "CX-"+String(l.folio).padStart(6,"0") : "CX-——————"; }
 function fmtFecha(iso){
   if(!iso) return '—';
   try{ return new Date(iso).toLocaleString('es-EC',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}); }
@@ -666,7 +669,7 @@ function renderQueue(){
       && (fc==='all'||l.carrera===fc)
       && (fci==='all'||l.ciudad===fci)
       && (ft==='all'|| (ft==='si')===Boolean(l.conectado))
-      && (l.nombre||'').toLowerCase().includes(query))
+      && (((l.nombre||'').toLowerCase().includes(query)) || fmtFolio(l).toLowerCase().includes(query) || String(l.folio||'').includes(query.replace(/^cx-?0*/,''))))
     .forEach(l=>{
       const row = document.createElement('div');
       row.className = 'lead' + (l.conectado ? ' done' : '');
@@ -675,7 +678,7 @@ function renderQueue(){
         ${pnBadge(l)}
         <div class="checkwrap"><button class="checkbtn ${l.conectado?'on':''}" ${READONLY?'disabled style="cursor:default;opacity:.6"':''}>${l.conectado?'✓':''}</button><small>${l.conectado?(l.conectado_por||'sí').split('@')[0]:(READONLY?'—':'conectar')}</small></div>
         <div class="who">
-          <div class="nm">${l.nombre||'(sin nombre)'}</div>
+          <div class="nm"><span class="folio">${fmtFolio(l)}</span>${l.nombre||'(sin nombre)'}</div>
           <div class="cr">${l.carrera||'—'} · ${l.ciudad||'—'}</div>
           <div class="ct"><span>📞</span>${l.telefono||'—'}<span>✉</span>${l.email||'—'}<span>🪪</span>${l.identificacion||'<em style="color:var(--warn)">sin cédula</em>'}</div>
           <div class="ct" style="color:var(--muted)"><span>🕒</span>${fmtFecha(l.created_at)}${(l.contactos||1)>1?` &nbsp;<b style="color:#B8912B">🔁 volvió a contactar · ${l.contactos}×</b>`:''}${l.entregado_ute?` &nbsp;<b style="color:var(--ok)">✓ en UTE</b>`:''}${l.atendido?` &nbsp;<b style="color:var(--ok)">✓ atendido</b>`:''}</div>
@@ -726,7 +729,7 @@ async function showDetail(l, keepTab){
     <div class="detail-head" style="margin-bottom:0">
       <div class="avatar">${initials(l.nombre)}</div>
       <div style="flex:1">
-        <div style="font-size:17px;font-weight:800">${l.nombre||'(sin nombre)'}</div>
+        <div style="font-size:17px;font-weight:800"><span class="folio big">${fmtFolio(l)}</span>${l.nombre||'(sin nombre)'}</div>
         <div style="font-size:12.5px;color:var(--muted);font-weight:600;margin-top:2px">${l.carrera||'—'} · ${l.ciudad||'—'} · ${l.origen||''}</div>
       </div>
       ${pnBadge(l)}
