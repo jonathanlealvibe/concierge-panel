@@ -677,7 +677,7 @@ function renderQueue(){
         <div class="who">
           <div class="nm">${l.nombre||'(sin nombre)'}</div>
           <div class="cr">${l.carrera||'—'} · ${l.ciudad||'—'}</div>
-          <div class="ct"><span>📞</span>${l.telefono||'—'}<span>✉</span>${l.email||'—'}</div>
+          <div class="ct"><span>📞</span>${l.telefono||'—'}<span>✉</span>${l.email||'—'}<span>🪪</span>${l.identificacion||'<em style="color:var(--warn)">sin cédula</em>'}</div>
           <div class="ct" style="color:var(--muted)"><span>🕒</span>${fmtFecha(l.created_at)}${(l.contactos||1)>1?` &nbsp;<b style="color:#B8912B">🔁 volvió a contactar · ${l.contactos}×</b>`:''}${l.entregado_ute?` &nbsp;<b style="color:var(--ok)">✓ en UTE</b>`:''}${l.atendido?` &nbsp;<b style="color:var(--ok)">✓ atendido</b>`:''}</div>
         </div>
         <select class="res-select ${l.resultado?'r-set':''}" ${READONLY?'disabled':''}>${RESULTS.map(r=>`<option ${r===resUI?'selected':''}>${r}</option>`).join('')}</select>
@@ -734,6 +734,7 @@ async function showDetail(l, keepTab){
     <div class="dgrid">
       <div class="dsec"><div class="k">Teléfono</div><div class="v">${l.telefono||'—'}</div></div>
       <div class="dsec"><div class="k">Correo</div><div class="v">${l.email||'—'}</div></div>
+      <div class="dsec"><div class="k">Cédula</div><div class="v" style="${l.identificacion?'':'color:var(--warn)'}">${l.identificacion ? '🪪 '+l.identificacion+(l.tipo_identificacion?' · '+l.tipo_identificacion:'') : 'Sin cédula'}</div></div>
       <div class="dsec"><div class="k">Mejor horario</div><div class="v">${l.mejor_horario||'—'}</div></div>
       <div class="dsec"><div class="k">Llegó (fecha y hora)</div><div class="v">🕒 ${fmtFecha(l.created_at)}</div></div>
       <div class="dsec"><div class="k">Veces que contactó</div><div class="v" style="${(l.contactos||1)>1?'color:#B8912B;font-weight:800':''}">${(l.contactos||1)>1?`🔁 ${l.contactos} veces · última: ${fmtFecha(l.ultimo_contacto)}`:'1 vez'}</div></div>
