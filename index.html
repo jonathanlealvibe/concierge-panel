@@ -91,6 +91,18 @@ body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--ink);min-
 .progress-take{height:12px;border-radius:6px;background:#FDE2D8;overflow:hidden;margin-top:10px}
 .progress-take i{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,var(--ok),#7BE0A8);width:var(--w)}
 .controls{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+/* barra de filtros ordenada: cada control con su etiqueta */
+.fbar{display:flex;gap:12px 16px;flex-wrap:wrap;align-items:flex-end;background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:14px}
+.fbar .filt{display:flex;flex-direction:column;gap:5px;min-width:150px}
+.fbar .filt>span{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.fbar .filt.grow{flex:1;min-width:220px}
+.fbar .filt select,.fbar .filt input{font-family:inherit;font-size:13.5px;padding:9px 11px;border:1.5px solid var(--line);border-radius:9px;background:#fff;color:var(--ink);width:100%}
+.fbar .daterow{gap:6px;flex-wrap:nowrap}
+.fbar .daterow input[type=date]{width:auto}
+.fbar .filt.fecha{min-width:0}
+.fbar .daterow .chip{padding:7px 11px;font-size:12px}
+.fbar .btn-clear{align-self:flex-end;font-family:inherit;font-size:12.5px;font-weight:700;padding:9px 13px;border-radius:9px;border:1.5px solid var(--line);background:#fff;color:var(--muted);cursor:pointer}
+.fbar .btn-clear:hover{color:var(--ink);border-color:var(--ink)}
 select,input[type=search],input[type=date]{font-family:inherit;font-weight:600;font-size:13px;color:var(--ink);border:1.5px solid var(--line);border-radius:10px;background:var(--card);padding:9px 13px;outline:none}
 select:focus,input:focus{border-color:var(--azul)}
 input[type=search]{flex:1;min-width:180px}
@@ -258,31 +270,39 @@ footer{text-align:center;font-size:12px;color:var(--muted);font-weight:600;paddi
       <span class="daterow"><input type="date" id="fDesde"> → <input type="date" id="fHasta"></span>
     </div>
   </div>
-  <div class="controls" style="margin-top:-6px">
-    <select id="fUtePri">
-      <option value="all">Todas las prioridades</option>
+  <div class="fbar">
+    <label class="filt"><span>Prioridad</span><select id="fUtePri">
+      <option value="all">Todas</option>
       <option value="5">P5 · Listo para matricularse</option>
       <option value="4">P4 · Muy interesado</option>
       <option value="3">P3 · Interesado</option>
       <option value="2">P2 · Explorando</option>
       <option value="1">P1 · En frío</option>
-    </select>
-    <select id="fUteCar"><option value="all">Todas las carreras</option></select>
-    <select id="fUteCity"><option value="all">Todas las ciudades</option></select>
-    <select id="fUteTake">
+    </select></label>
+    <label class="filt"><span>Carrera</span><select id="fUteCar"><option value="all">Todas</option></select></label>
+    <label class="filt"><span>Sede UTE</span><select id="fUteCity">
+      <option value="all">Todas las sedes</option>
+      <option value="Quito">Quito</option>
+      <option value="Santo Domingo">Santo Domingo</option>
+      <option value="Manabí">Manabí</option>
+      <option value="Cuenca">Cuenca</option>
+      <option value="__otra">Otra ciudad (sin sede)</option>
+    </select></label>
+    <label class="filt"><span>Conexión</span><select id="fUteTake">
       <option value="all">Conectados y pendientes</option>
       <option value="no">Solo por conectar</option>
       <option value="si">Solo conectados</option>
-    </select>
-    <select id="fUteEstado" title="¿Dónde está el prospecto?">
-      <option value="all">Dónde está: todos</option>
+    </select></label>
+    <label class="filt"><span>Dónde está</span><select id="fUteEstado">
+      <option value="all">Todos</option>
       <option value="__null">Sin resultado aún</option>
       <option value="gestionado">Ingresados a UTE</option>
       <option value="en_proceso">En proceso</option>
       <option value="por_matricularse">Por matricularse</option>
       <option value="inscrito">Inscrito</option>
       <option value="abandonado">Abandonado</option>
-    </select>
+    </select></label>
+    <button class="btn-clear" onclick="limpiarFiltrosUte()">✕ Limpiar filtros</button>
   </div>
 
   <div class="grid kpis">
@@ -369,8 +389,8 @@ footer{text-align:center;font-size:12px;color:var(--muted);font-weight:600;paddi
     <div class="card">
       <div class="cardhead">
         <div>
-          <h3>Leads por ciudad</h3>
-          <p class="hint">De dónde nos escriben los interesados</p>
+          <h3>Leads por sede UTE</h3>
+          <p class="hint">Sede que le corresponde a cada interés según la ciudad del prospecto</p>
         </div>
         <div class="gtoggle">
           <button class="on" onclick="setType('ciudad','bar',this)">Barras</button>
@@ -462,33 +482,41 @@ footer{text-align:center;font-size:12px;color:var(--muted);font-weight:600;paddi
     </div>
   </div>
 
-  <div class="controls">
-    <input type="search" id="q" placeholder="Buscar por nombre o N° (CX-000123)…">
-    <select id="fPri">
-      <option value="all">Todas las prioridades</option>
+  <div class="fbar">
+    <label class="filt grow"><span>Buscar</span><input type="search" id="q" placeholder="Nombre o N° de prospecto (CX-000123)…"></label>
+    <label class="filt"><span>Prioridad</span><select id="fPri">
+      <option value="all">Todas</option>
       <option value="5">P5 · Listo para matricularse</option>
       <option value="4">P4 · Muy interesado</option>
       <option value="3">P3 · Interesado</option>
       <option value="2">P2 · Explorando</option>
       <option value="1">P1 · En frío</option>
-    </select>
-    <select id="fCar"><option value="all">Todas las carreras</option></select>
-    <select id="fCity"><option value="all">Todas las ciudades</option></select>
-    <select id="fTake">
+    </select></label>
+    <label class="filt"><span>Carrera</span><select id="fCar"><option value="all">Todas</option></select></label>
+    <label class="filt"><span>Sede UTE</span><select id="fCity">
+      <option value="all">Todas las sedes</option>
+      <option value="Quito">Quito</option>
+      <option value="Santo Domingo">Santo Domingo</option>
+      <option value="Manabí">Manabí</option>
+      <option value="Cuenca">Cuenca</option>
+      <option value="__otra">Otra ciudad (sin sede)</option>
+    </select></label>
+    <label class="filt"><span>Conexión</span><select id="fTake">
       <option value="all">Conectados y pendientes</option>
       <option value="no">Solo por conectar</option>
       <option value="si">Solo conectados</option>
-    </select>
-    <select id="fEstado" title="¿Dónde está el prospecto?">
-      <option value="all">Dónde está: todos</option>
+    </select></label>
+    <label class="filt"><span>Dónde está</span><select id="fEstado">
+      <option value="all">Todos</option>
       <option value="__null">Sin resultado aún</option>
       <option value="gestionado">Ingresados a UTE</option>
       <option value="en_proceso">En proceso</option>
       <option value="por_matricularse">Por matricularse</option>
       <option value="inscrito">Inscrito</option>
       <option value="abandonado">Abandonado</option>
-    </select>
-    <span class="daterow" title="Fecha en que llegó el prospecto"><input type="date" id="fIntDesde"> → <input type="date" id="fIntHasta"> <button class="chip" onclick="rangoInt(0)">Hoy</button><button class="chip" onclick="rangoInt(6)">Semana</button><button class="chip" onclick="rangoInt(29)">Mes</button><button class="chip" onclick="rangoInt(null)">Todo</button></span>
+    </select></label>
+    <div class="filt fecha"><span>Fecha de llegada</span><span class="daterow"><input type="date" id="fIntDesde"> → <input type="date" id="fIntHasta"> <button class="chip" onclick="rangoInt(0)">Hoy</button><button class="chip" onclick="rangoInt(6)">Semana</button><button class="chip" onclick="rangoInt(29)">Mes</button><button class="chip" onclick="rangoInt(null)">Todo</button></span></div>
+    <button class="btn-clear" onclick="limpiarFiltrosInt()">✕ Limpiar filtros</button>
   </div>
 
   <div class="queue">
@@ -701,6 +729,19 @@ function intereses(l){
   return arr.length ? arr : (l&&l.carrera ? [{carrera:l.carrera, ciudad:l.ciudad||null}] : []);
 }
 function intsTxt(l){ const a=intereses(l); return a.length ? a.map(i=>i.carrera+(i.ciudad?' · '+i.ciudad:'')).join('  |  ') : '—'; }
+// Sede de la UTE a la que corresponde una ciudad (misma regla que sede_de() en la base)
+function sedeDe(c){
+  if(!c) return null;
+  const s = c.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+  if(/cuenca|azuay/.test(s)) return 'Cuenca';
+  if(/santo domingo|tsachila/.test(s)) return 'Santo Domingo';
+  if(/manab|manta|portoviejo|chone|jipijapa|bahia de caraquez|el carmen|pedernales|montecristi/.test(s)) return 'Manabí';
+  if(/quito|pichincha/.test(s)) return 'Quito';
+  return null;
+}
+function pasaSede(c, f){ return f==='all' || (f==='__otra' ? (!!c && !sedeDe(c)) : sedeDe(c)===f); }
+function limpiarFiltrosInt(){ q.value=''; ['fPri','fCar','fCity','fTake','fEstado'].forEach(id=>document.getElementById(id).value='all'); fIntDesde.value=''; fIntHasta.value=''; renderQueue(); }
+function limpiarFiltrosUte(){ ['fUtePri','fUteCar','fUteCity','fUteTake','fUteEstado'].forEach(id=>document.getElementById(id).value='all'); cargarUte(); }
 function rangoInt(dias){
   const hoy=new Date();
   if(dias===null){ fIntDesde.value=''; fIntHasta.value=''; }
@@ -717,13 +758,12 @@ function renderQueue(){
   const query = q.value.toLowerCase();
   const fp = fPri.value, fc = fCar.value, fci = fCity.value, ft = fTake.value;
   // poblar filtros dinámicos (todas las carreras/ciudades de todos los intereses)
-  poblarFiltro(fCar, [...new Set(leads.flatMap(l=>intereses(l).map(i=>i.carrera)).filter(Boolean))].sort(), 'Todas las carreras');
-  poblarFiltro(fCity, [...new Set(leads.flatMap(l=>[l.ciudad, ...intereses(l).map(i=>i.ciudad)]).filter(Boolean))].sort(), 'Todas las ciudades');
+  poblarFiltro(fCar, [...new Set(leads.flatMap(l=>intereses(l).map(i=>i.carrera)).filter(Boolean))].sort(), 'Todas');
   queueBody.innerHTML = '';
   leads
     .filter(l => (fp==='all'||String(l.prioridad_num)===fp)
       && (fc==='all'||intereses(l).some(i=>i.carrera===fc))
-      && (fci==='all'||l.ciudad===fci||intereses(l).some(i=>i.ciudad===fci))
+      && (fci==='all'||pasaSede(l.ciudad,fci)||intereses(l).some(i=>pasaSede(i.ciudad,fci)))
       && (ft==='all'|| (ft==='si')===Boolean(l.conectado))
       && (fEstado.value==='all' || (fEstado.value==='__null' ? !l.resultado : l.resultado===fEstado.value))
       && enRango(l)
@@ -968,8 +1008,7 @@ async function poblarOpcionesUte(){
   const { data } = await sb.rpc('ute_opciones_filtro');
   const o = Array.isArray(data) ? data[0] : data;
   if(!o) return;
-  poblarFiltro(document.getElementById('fUteCar'), (o.carreras||[]).filter(Boolean), 'Todas las carreras');
-  poblarFiltro(document.getElementById('fUteCity'), (o.ciudades||[]).filter(Boolean), 'Todas las ciudades');
+  poblarFiltro(document.getElementById('fUteCar'), (o.carreras||[]).filter(Boolean), 'Todas');
 }
 function filtrosUte(){
   const v = id => document.getElementById(id).value;
@@ -990,7 +1029,7 @@ async function cargarUte(){
     sb.rpc('ute_kpis', {desde, hasta, ...f}),
     sb.rpc('ute_consolidado_diario', {desde, hasta, ...f}),
     sb.rpc('ute_por_carrera', {desde, hasta, ...f}),
-    sb.rpc('ute_por_ciudad', {desde, hasta, ...f}),
+    sb.rpc('ute_por_sede', {desde, hasta, ...f}).then(r=>({...r, data:(r.data||[]).map(x=>({ciudad:x.sede, total:x.total}))})),
     sb.rpc('ute_carrera_ciudad', {desde, hasta, ...f}),
     sb.rpc('ute_resultados', {desde, hasta, ...f}),
   ]);
