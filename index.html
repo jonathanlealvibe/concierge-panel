@@ -258,6 +258,32 @@ footer{text-align:center;font-size:12px;color:var(--muted);font-weight:600;paddi
       <span class="daterow"><input type="date" id="fDesde"> → <input type="date" id="fHasta"></span>
     </div>
   </div>
+  <div class="controls" style="margin-top:-6px">
+    <select id="fUtePri">
+      <option value="all">Todas las prioridades</option>
+      <option value="5">P5 · Listo para matricularse</option>
+      <option value="4">P4 · Muy interesado</option>
+      <option value="3">P3 · Interesado</option>
+      <option value="2">P2 · Explorando</option>
+      <option value="1">P1 · En frío</option>
+    </select>
+    <select id="fUteCar"><option value="all">Todas las carreras</option></select>
+    <select id="fUteCity"><option value="all">Todas las ciudades</option></select>
+    <select id="fUteTake">
+      <option value="all">Conectados y pendientes</option>
+      <option value="no">Solo por conectar</option>
+      <option value="si">Solo conectados</option>
+    </select>
+    <select id="fUteEstado" title="¿Dónde está el prospecto?">
+      <option value="all">Dónde está: todos</option>
+      <option value="__null">Sin resultado aún</option>
+      <option value="gestionado">Ingresados a UTE</option>
+      <option value="en_proceso">En proceso</option>
+      <option value="por_matricularse">Por matricularse</option>
+      <option value="inscrito">Inscrito</option>
+      <option value="abandonado">Abandonado</option>
+    </select>
+  </div>
 
   <div class="grid kpis">
     <div class="kpi" style="--accent:var(--morado)">
@@ -453,6 +479,16 @@ footer{text-align:center;font-size:12px;color:var(--muted);font-weight:600;paddi
       <option value="no">Solo por conectar</option>
       <option value="si">Solo conectados</option>
     </select>
+    <select id="fEstado" title="¿Dónde está el prospecto?">
+      <option value="all">Dónde está: todos</option>
+      <option value="__null">Sin resultado aún</option>
+      <option value="gestionado">Ingresados a UTE</option>
+      <option value="en_proceso">En proceso</option>
+      <option value="por_matricularse">Por matricularse</option>
+      <option value="inscrito">Inscrito</option>
+      <option value="abandonado">Abandonado</option>
+    </select>
+    <span class="daterow" title="Fecha en que llegó el prospecto"><input type="date" id="fIntDesde"> → <input type="date" id="fIntHasta"> <button class="chip" onclick="rangoInt(0)">Hoy</button><button class="chip" onclick="rangoInt(6)">Semana</button><button class="chip" onclick="rangoInt(29)">Mes</button><button class="chip" onclick="rangoInt(null)">Todo</button></span>
   </div>
 
   <div class="queue">
@@ -506,8 +542,8 @@ let ROL = null, USER = null, READONLY = false;
 let leads = [];            // filas reales de ute_leads
 let selected = null;
 const charts = {};
-const RESULTS_DB = {'—':null,'Gestionado':'gestionado','En proceso':'en_proceso','Por matricularse':'por_matricularse','Inscrito':'inscrito','Abandonado':'abandonado'};
-const RESULTS_UI = {null:'—', 'gestionado':'Gestionado','en_proceso':'En proceso','por_matricularse':'Por matricularse','inscrito':'Inscrito','abandonado':'Abandonado'};
+const RESULTS_DB = {'—':null,'Ingresados a UTE':'gestionado','En proceso':'en_proceso','Por matricularse':'por_matricularse','Inscrito':'inscrito','Abandonado':'abandonado'};
+const RESULTS_UI = {null:'—', 'gestionado':'Ingresados a UTE','en_proceso':'En proceso','por_matricularse':'Por matricularse','inscrito':'Inscrito','abandonado':'Abandonado'};
 const RESULTS = Object.keys(RESULTS_DB);
 const PN_LABEL = {5:'Listo para matricularse',4:'Muy interesado',3:'Interesado',2:'Explorando',1:'En frío'};
 
@@ -631,7 +667,7 @@ const pnBadge = l => l.prioridad_num
 function buildEstados(type){
   type = type || (charts.estados ? charts.estados.config.type : 'bar');
   if(charts.estados) charts.estados.destroy();
-  const labels = ['Gestionado','En proceso','Por matricularse','Inscrito','Abandonado','Sin resultado'];
+  const labels = ['Ingresados a UTE','En proceso','Por matricularse','Inscrito','Abandonado','Sin resultado'];
   const dbvals = ['gestionado','en_proceso','por_matricularse','inscrito','abandonado',null];
   const counts = dbvals.map(r => leads.filter(l => (l.resultado||null) === r).length);
   const cols = [P.azul,P.indigo,P.celeste,'#12B76A','#C9CFDE','#EDF0F7'];
@@ -659,18 +695,38 @@ function fmtFecha(iso){
   try{ return new Date(iso).toLocaleString('es-EC',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}); }
   catch(e){ return '—'; }
 }
+// Intereses del prospecto: [{carrera, ciudad}] — con respaldo en carrera/ciudad principal
+function intereses(l){
+  const arr = Array.isArray(l&&l.intereses) ? l.intereses.filter(i=>i&&i.carrera) : [];
+  return arr.length ? arr : (l&&l.carrera ? [{carrera:l.carrera, ciudad:l.ciudad||null}] : []);
+}
+function intsTxt(l){ const a=intereses(l); return a.length ? a.map(i=>i.carrera+(i.ciudad?' · '+i.ciudad:'')).join('  |  ') : '—'; }
+function rangoInt(dias){
+  const hoy=new Date();
+  if(dias===null){ fIntDesde.value=''; fIntHasta.value=''; }
+  else { const d=new Date(); d.setDate(d.getDate()-dias); fIntDesde.value=d.toISOString().slice(0,10); fIntHasta.value=hoy.toISOString().slice(0,10); }
+  renderQueue();
+}
+function enRango(l){
+  const d = (l.created_at||'').slice(0,10);
+  if(fIntDesde.value && d < fIntDesde.value) return false;
+  if(fIntHasta.value && d > fIntHasta.value) return false;
+  return true;
+}
 function renderQueue(){
   const query = q.value.toLowerCase();
   const fp = fPri.value, fc = fCar.value, fci = fCity.value, ft = fTake.value;
-  // poblar filtros dinámicos
-  poblarFiltro(fCar, [...new Set(leads.map(l=>l.carrera).filter(Boolean))], 'Todas las carreras');
-  poblarFiltro(fCity, [...new Set(leads.map(l=>l.ciudad).filter(Boolean))], 'Todas las ciudades');
+  // poblar filtros dinámicos (todas las carreras/ciudades de todos los intereses)
+  poblarFiltro(fCar, [...new Set(leads.flatMap(l=>intereses(l).map(i=>i.carrera)).filter(Boolean))].sort(), 'Todas las carreras');
+  poblarFiltro(fCity, [...new Set(leads.flatMap(l=>[l.ciudad, ...intereses(l).map(i=>i.ciudad)]).filter(Boolean))].sort(), 'Todas las ciudades');
   queueBody.innerHTML = '';
   leads
     .filter(l => (fp==='all'||String(l.prioridad_num)===fp)
-      && (fc==='all'||l.carrera===fc)
-      && (fci==='all'||l.ciudad===fci)
+      && (fc==='all'||intereses(l).some(i=>i.carrera===fc))
+      && (fci==='all'||l.ciudad===fci||intereses(l).some(i=>i.ciudad===fci))
       && (ft==='all'|| (ft==='si')===Boolean(l.conectado))
+      && (fEstado.value==='all' || (fEstado.value==='__null' ? !l.resultado : l.resultado===fEstado.value))
+      && enRango(l)
       && (((l.nombre||'').toLowerCase().includes(query)) || fmtFolio(l).toLowerCase().includes(query) || String(l.folio||'').includes(query.replace(/^cx-?0*/,''))))
     .forEach(l=>{
       const row = document.createElement('div');
@@ -681,7 +737,7 @@ function renderQueue(){
         <div class="checkwrap"><button class="checkbtn ${l.conectado?'on':''}" ${READONLY?'disabled style="cursor:default;opacity:.6"':''}>${l.conectado?'✓':''}</button><small>${l.conectado?(l.conectado_por||'sí').split('@')[0]:(READONLY?'—':'conectar')}</small></div>
         <div class="who">
           <div class="nm"><span class="folio">${fmtFolio(l)}</span>${l.nombre||'(sin nombre)'}</div>
-          <div class="cr">${l.carrera||'—'} · ${l.ciudad||'—'}</div>
+          <div class="cr">${intsTxt(l)}${intereses(l).length>1?` <b style="color:#B8912B">· ${intereses(l).length} intereses</b>`:''}</div>
           <div class="ct"><span>📞</span>${l.telefono||'—'}<span>✉</span>${l.email||'—'}<span>🪪</span>${l.identificacion||'<em style="color:var(--warn)">sin cédula</em>'}</div>
           <div class="ct" style="color:var(--muted)"><span>🕒</span>${fmtFecha(l.created_at)}${(l.contactos||1)>1?` &nbsp;<b style="color:#B8912B">🔁 volvió a contactar · ${l.contactos}×</b>`:''}${telsSec(l).length?` &nbsp;<b style="color:#B8912B">📱 otro número: ${telsSec(l).join(', ')}</b>`:''}${l.entregado_ute?` &nbsp;<b style="color:var(--ok)">✓ en UTE</b>`:''}${l.atendido?` &nbsp;<b style="color:var(--ok)">✓ atendido</b>`:''}</div>
         </div>
@@ -740,6 +796,10 @@ async function showDetail(l, keepTab){
       <div class="dsec"><div class="k">Teléfono</div><div class="v">${l.telefono||'—'}${telsSec(l).length?`<div style="margin-top:4px;font-size:12px;color:#B8912B;font-weight:700">📱 También llamó desde: ${telsSec(l).join(' · ')}</div><div style="font-size:11px;color:var(--muted)">Reconocido por cédula desde otro dispositivo</div>`:''}</div></div>
       <div class="dsec"><div class="k">Correo</div><div class="v">${l.email||'—'}</div></div>
       <div class="dsec"><div class="k">Cédula</div><div class="v" style="${l.identificacion?'':'color:var(--warn)'}">${l.identificacion ? '🪪 '+l.identificacion+(l.tipo_identificacion?' · '+l.tipo_identificacion:'') : 'Sin cédula'}</div></div>
+      <div class="dsec" style="grid-column:1/-1"><div class="k">Carreras de interés (${intereses(l).length}) · cada una se entrega a la UTE por separado</div><div class="v">${intereses(l).map(i=>{
+        const e=(Array.isArray(l.entregas_ute)?l.entregas_ute:[]).find(x=>x.carrera===i.carrera && (x.ciudad||null)===(i.ciudad||null));
+        const est = e ? (e.ok?`<span style="color:var(--ok)">✓ en UTE${e.accion?' · '+e.accion:''}</span>`:`<span style="color:var(--warn)">⚠ ${e.error||'error'}</span>`) : '<span style="color:var(--muted)">pendiente</span>';
+        return `<div style="display:flex;gap:10px;align-items:center;padding:3px 0"><b>🎓 ${i.carrera}</b><span style="color:var(--muted)">${i.ciudad||'ciudad no indicada'}</span><span style="font-size:12px">${est}</span></div>`;}).join('')||'—'}</div></div>
       <div class="dsec"><div class="k">Mejor horario</div><div class="v">${l.mejor_horario||'—'}</div></div>
       <div class="dsec"><div class="k">Llegó (fecha y hora)</div><div class="v">🕒 ${fmtFecha(l.created_at)}</div></div>
       <div class="dsec"><div class="k">Veces que contactó</div><div class="v" style="${(l.contactos||1)>1?'color:#B8912B;font-weight:800':''}">${(l.contactos||1)>1?`🔁 ${l.contactos} veces · última: ${fmtFecha(l.ultimo_contacto)}`:'1 vez'}</div></div>
@@ -902,15 +962,37 @@ async function eliminarUsuario(id, email){
 function rango(){
   return { desde: fDesde.value, hasta: fHasta.value };
 }
+let _opcionesUte = false;
+async function poblarOpcionesUte(){
+  if(_opcionesUte) return; _opcionesUte = true;
+  const { data } = await sb.rpc('ute_opciones_filtro');
+  const o = Array.isArray(data) ? data[0] : data;
+  if(!o) return;
+  poblarFiltro(document.getElementById('fUteCar'), (o.carreras||[]).filter(Boolean), 'Todas las carreras');
+  poblarFiltro(document.getElementById('fUteCity'), (o.ciudades||[]).filter(Boolean), 'Todas las ciudades');
+}
+function filtrosUte(){
+  const v = id => document.getElementById(id).value;
+  const est = v('fUteEstado');
+  return {
+    p_prioridad: v('fUtePri')==='all' ? null : Number(v('fUtePri')),
+    p_carrera:   v('fUteCar')==='all' ? null : v('fUteCar'),
+    p_ciudad:    v('fUteCity')==='all' ? null : v('fUteCity'),
+    p_conectado: v('fUteTake')==='all' ? null : v('fUteTake')==='si',
+    p_resultado: est==='all' ? null : est,   // '__null' = sin resultado
+  };
+}
 async function cargarUte(){
+  await poblarOpcionesUte();
   const { desde, hasta } = rango();
+  const f = filtrosUte();
   const [kpis, diario, carrera, ciudad, cruce, resultados] = await Promise.all([
-    sb.rpc('ute_kpis', {desde, hasta}),
-    sb.rpc('ute_consolidado_diario', {desde, hasta}),
-    sb.rpc('ute_por_carrera', {desde, hasta}),
-    sb.rpc('ute_por_ciudad', {desde, hasta}),
-    sb.rpc('ute_carrera_ciudad', {desde, hasta}),
-    sb.rpc('ute_resultados', {desde, hasta}),
+    sb.rpc('ute_kpis', {desde, hasta, ...f}),
+    sb.rpc('ute_consolidado_diario', {desde, hasta, ...f}),
+    sb.rpc('ute_por_carrera', {desde, hasta, ...f}),
+    sb.rpc('ute_por_ciudad', {desde, hasta, ...f}),
+    sb.rpc('ute_carrera_ciudad', {desde, hasta, ...f}),
+    sb.rpc('ute_resultados', {desde, hasta, ...f}),
   ]);
   const k = kpis.data?.[0] || {conversaciones:0,leads_completos:0,entregados:0,inscritos:0};
   kConv.textContent = Number(k.conversaciones).toLocaleString();
@@ -1031,6 +1113,10 @@ window.addEventListener('DOMContentLoaded', () => {
   fCar.addEventListener('change', renderQueue);
   fCity.addEventListener('change', renderQueue);
   fTake.addEventListener('change', renderQueue);
+  fEstado.addEventListener('change', renderQueue);
+  ['fUtePri','fUteCar','fUteCity','fUteTake','fUteEstado'].forEach(id=>document.getElementById(id).addEventListener('change', cargarUte));
+  fIntDesde.addEventListener('change', renderQueue);
+  fIntHasta.addEventListener('change', renderQueue);
   fDesde.addEventListener('change', cargarUte);
   fHasta.addEventListener('change', cargarUte);
 });
