@@ -296,6 +296,7 @@ footer{text-align:center;font-size:12px;color:var(--muted);font-weight:600;paddi
     <label class="filt"><span>Dónde está</span><select id="fUteEstado">
       <option value="all">Todos</option>
       <option value="__null">Sin resultado aún</option>
+      <option value="__asesor">Para asesor (fuera de la oferta UTE)</option>
       <option value="gestionado">Ingresados a UTE</option>
       <option value="en_proceso">En proceso</option>
       <option value="por_matricularse">Por matricularse</option>
@@ -509,6 +510,7 @@ footer{text-align:center;font-size:12px;color:var(--muted);font-weight:600;paddi
     <label class="filt"><span>Dónde está</span><select id="fEstado">
       <option value="all">Todos</option>
       <option value="__null">Sin resultado aún</option>
+      <option value="__asesor">Para asesor (fuera de la oferta UTE)</option>
       <option value="gestionado">Ingresados a UTE</option>
       <option value="en_proceso">En proceso</option>
       <option value="por_matricularse">Por matricularse</option>
@@ -728,6 +730,7 @@ function intereses(l){
   const arr = Array.isArray(l&&l.intereses) ? l.intereses.filter(i=>i&&i.carrera) : [];
   return arr.length ? arr : (l&&l.carrera ? [{carrera:l.carrera, ciudad:l.ciudad||null}] : []);
 }
+function fueraOferta(l){ return Array.isArray(l&&l.fuera_oferta) ? l.fuera_oferta.filter(Boolean) : []; }
 function intsTxt(l){ const a=intereses(l); return a.length ? a.map(i=>i.carrera+(i.ciudad?' · '+i.ciudad:'')).join('  |  ') : '—'; }
 // Sede de la UTE a la que corresponde una ciudad (misma regla que sede_de() en la base)
 function sedeDe(c){
@@ -765,7 +768,7 @@ function renderQueue(){
       && (fc==='all'||intereses(l).some(i=>i.carrera===fc))
       && (fci==='all'||pasaSede(l.ciudad,fci)||intereses(l).some(i=>pasaSede(i.ciudad,fci)))
       && (ft==='all'|| (ft==='si')===Boolean(l.conectado))
-      && (fEstado.value==='all' || (fEstado.value==='__null' ? !l.resultado : l.resultado===fEstado.value))
+      && (fEstado.value==='all' || (fEstado.value==='__null' ? !l.resultado : fEstado.value==='__asesor' ? fueraOferta(l).length>0 : l.resultado===fEstado.value))
       && enRango(l)
       && (((l.nombre||'').toLowerCase().includes(query)) || fmtFolio(l).toLowerCase().includes(query) || String(l.folio||'').includes(query.replace(/^cx-?0*/,''))))
     .forEach(l=>{
@@ -779,7 +782,7 @@ function renderQueue(){
           <div class="nm"><span class="folio">${fmtFolio(l)}</span>${l.nombre||'(sin nombre)'}</div>
           <div class="cr">${intsTxt(l)}${intereses(l).length>1?` <b style="color:#B8912B">· ${intereses(l).length} intereses</b>`:''}</div>
           <div class="ct"><span>📞</span>${l.telefono||'—'}<span>✉</span>${l.email||'—'}<span>🪪</span>${l.identificacion||'<em style="color:var(--warn)">sin cédula</em>'}</div>
-          <div class="ct" style="color:var(--muted)"><span>🕒</span>${fmtFecha(l.created_at)}${(l.contactos||1)>1?` &nbsp;<b style="color:#B8912B">🔁 volvió a contactar · ${l.contactos}×</b>`:''}${telsSec(l).length?` &nbsp;<b style="color:#B8912B">📱 otro número: ${telsSec(l).join(', ')}</b>`:''}${l.entregado_ute?` &nbsp;<b style="color:var(--ok)">✓ en UTE</b>`:''}${l.atendido?` &nbsp;<b style="color:var(--ok)">✓ atendido</b>`:''}</div>
+          <div class="ct" style="color:var(--muted)"><span>🕒</span>${fmtFecha(l.created_at)}${(l.contactos||1)>1?` &nbsp;<b style="color:#B8912B">🔁 volvió a contactar · ${l.contactos}×</b>`:''}${telsSec(l).length?` &nbsp;<b style="color:#B8912B">📱 otro número: ${telsSec(l).join(', ')}</b>`:''}${fueraOferta(l).length?` &nbsp;<b style="color:var(--warn)">🧑‍💼 Para asesor · fuera de la oferta UTE: ${fueraOferta(l).join(', ')}</b>`:''}${l.entregado_ute?` &nbsp;<b style="color:var(--ok)">✓ en UTE</b>`:''}${l.atendido?` &nbsp;<b style="color:var(--ok)">✓ atendido</b>`:''}</div>
         </div>
         <select class="res-select ${l.resultado?'r-set':''}" ${READONLY?'disabled':''}>${RESULTS.map(r=>`<option ${r===resUI?'selected':''}>${r}</option>`).join('')}</select>
         <span class="assigned-tag ${l.conectado?'':'no'}">${l.conectado?('Consultor: '+(l.conectado_por||'').split('@')[0]):'Sin asignar'}</span>
@@ -838,7 +841,8 @@ async function showDetail(l, keepTab){
       <div class="dsec"><div class="k">Cédula</div><div class="v" style="${l.identificacion?'':'color:var(--warn)'}">${l.identificacion ? '🪪 '+l.identificacion+(l.tipo_identificacion?' · '+l.tipo_identificacion:'') : 'Sin cédula'}</div></div>
       <div class="dsec" style="grid-column:1/-1"><div class="k">Carreras de interés (${intereses(l).length}) · cada una se entrega a la UTE por separado</div><div class="v">${intereses(l).map(i=>{
         const e=(Array.isArray(l.entregas_ute)?l.entregas_ute:[]).find(x=>x.carrera===i.carrera && (x.ciudad||null)===(i.ciudad||null));
-        const est = e ? (e.ok?`<span style="color:var(--ok)">✓ en UTE${e.accion?' · '+e.accion:''}</span>`:`<span style="color:var(--warn)">⚠ ${e.error||'error'}</span>`) : '<span style="color:var(--muted)">pendiente</span>';
+        const est = e ? (e.ok?`<span style="color:var(--ok)">✓ en UTE${e.accion?' · '+e.accion:''}</span>`:`<span style="color:var(--warn)">⚠ ${e.error||'error'}</span>`)
+                  : (fueraOferta(l).includes(i.carrera) ? '<span style="color:var(--warn)">🧑‍💼 no está en la oferta UTE · lo atiende un asesor, no se envía a Salesforce</span>' : '<span style="color:var(--muted)">pendiente</span>');
         return `<div style="display:flex;gap:10px;align-items:center;padding:3px 0"><b>🎓 ${i.carrera}</b><span style="color:var(--muted)">${i.ciudad||'ciudad no indicada'}</span><span style="font-size:12px">${est}</span></div>`;}).join('')||'—'}</div></div>
       <div class="dsec"><div class="k">Mejor horario</div><div class="v">${l.mejor_horario||'—'}</div></div>
       <div class="dsec"><div class="k">Llegó (fecha y hora)</div><div class="v">🕒 ${fmtFecha(l.created_at)}</div></div>
